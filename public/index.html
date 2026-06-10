@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-950">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Daily Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    code, .mono { font-family: 'JetBrains Mono', monospace; }
+    .gradient-text {
+      background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .card-glow:hover {
+      box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.3), 0 4px 24px rgba(129, 140, 248, 0.08);
+    }
+    .pulse-dot {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .shimmer {
+      background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-950 text-gray-100">
+
+  <!-- Header -->
+  <header class="border-b border-gray-800 bg-gray-900/60 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm">✦</div>
+        <span class="font-semibold text-lg gradient-text">AI Daily Dashboard</span>
+      </div>
+      <div id="date-badge" class="text-xs mono text-gray-500 bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700">
+        Loading...
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-6xl mx-auto px-6 py-10">
+
+    <!-- Loading state -->
+    <div id="loading" class="space-y-6">
+      <div class="text-center py-12">
+        <div class="inline-flex items-center gap-3 text-gray-400">
+          <span class="pulse-dot w-2 h-2 rounded-full bg-indigo-500 inline-block"></span>
+          <span class="text-sm">Generating your daily briefing with Claude...</span>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="shimmer h-64 rounded-2xl"></div>
+        <div class="shimmer h-64 rounded-2xl"></div>
+        <div class="shimmer h-64 rounded-2xl"></div>
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div id="error" class="hidden text-center py-16">
+      <div class="text-4xl mb-4">⚠️</div>
+      <p class="text-gray-400 text-sm mb-2">Failed to load daily content.</p>
+      <p id="error-msg" class="text-red-400 text-xs mono mb-6"></p>
+      <button onclick="loadContent()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm transition-colors">
+        Retry
+      </button>
+    </div>
+
+    <!-- Content -->
+    <div id="content" class="hidden space-y-8">
+
+      <p class="text-center text-gray-500 text-sm">Your personalized AI-powered briefing for today</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Tasks -->
+        <div class="card-glow transition-all duration-300 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div class="flex items-center gap-2 mb-5">
+            <span class="text-lg">🎯</span>
+            <h2 class="font-semibold text-gray-100">Today's Coding Tasks</h2>
+          </div>
+          <ol id="tasks-list" class="space-y-3"></ol>
+        </div>
+
+        <!-- Projects -->
+        <div class="card-glow transition-all duration-300 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div class="flex items-center gap-2 mb-5">
+            <span class="text-lg">🚀</span>
+            <h2 class="font-semibold text-gray-100">AI Project Ideas</h2>
+          </div>
+          <ul id="projects-list" class="space-y-3"></ul>
+        </div>
+
+        <!-- Tips -->
+        <div class="card-glow transition-all duration-300 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div class="flex items-center gap-2 mb-5">
+            <span class="text-lg">⚡</span>
+            <h2 class="font-semibold text-gray-100">Workflow Tips</h2>
+          </div>
+          <ul id="tips-list" class="space-y-3"></ul>
+        </div>
+
+      </div>
+
+      <!-- Footer note -->
+      <p class="text-center text-gray-600 text-xs">
+        Content generated once per day by Claude Opus · Refreshes automatically at midnight
+      </p>
+    </div>
+
+  </main>
+
+  <script>
+    function formatDate(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
+    function makeTaskItem(text, index) {
+      return `
+        <li class="flex gap-3 text-sm text-gray-300 leading-relaxed">
+          <span class="mono text-indigo-400 font-medium shrink-0 mt-0.5">${String(index + 1).padStart(2, '0')}</span>
+          <span>${text}</span>
+        </li>`;
+    }
+
+    function makeListItem(text, icon) {
+      return `
+        <li class="flex gap-3 text-sm text-gray-300 leading-relaxed">
+          <span class="shrink-0 mt-0.5 text-base">${icon}</span>
+          <span>${text}</span>
+        </li>`;
+    }
+
+    async function loadContent() {
+      document.getElementById('loading').classList.remove('hidden');
+      document.getElementById('error').classList.add('hidden');
+      document.getElementById('content').classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/content');
+        const data = await res.json();
+
+        if (!data.success) throw new Error(data.error || 'Unknown error');
+
+        document.getElementById('date-badge').textContent = formatDate(data.date);
+
+        const { tasks, projects, tips } = data.content;
+
+        document.getElementById('tasks-list').innerHTML = tasks.map((t, i) => makeTaskItem(t, i)).join('');
+        document.getElementById('projects-list').innerHTML = projects.map(p => makeListItem(p, '💡')).join('');
+        document.getElementById('tips-list').innerHTML = tips.map(t => makeListItem(t, '✓')).join('');
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+      } catch (err) {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('error-msg').textContent = err.message;
+        document.getElementById('error').classList.remove('hidden');
+      }
+    }
+
+    loadContent();
+  </script>
+</body>
+</html>
